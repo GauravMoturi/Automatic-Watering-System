@@ -1,0 +1,59 @@
+#include <Arduino.h>
+#include <U8x8lib.h>
+
+#define MOSFET 2   // The MOSFET driver for the water pump on digital I/O 2
+#define REDLED 4   // Big red LED on digital I/O 4
+#define BUTTON 6   // Push button on digital I/O 6
+#define MOISTURE A0
+#define WET_THRESH 700
+
+auto display = U8X8_SSD1306_128X64_NONAME_HW_I2C(U8X8_PIN_NONE);
+int moistureValue = 0;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(MOSFET, OUTPUT); // Sets the D2 pin (MOSFET + Pump) to output
+  pinMode(REDLED, OUTPUT); // Sets the D4 pin (LED) to output
+  pinMode(BUTTON, INPUT); // Sets the D6 pin (Button) to input
+  digitalWrite(MOSFET, LOW);    // pump off
+  
+  display.begin(); // start up the OLED display
+  display.setFlipMode(0); // set to 1 or 0, depending on orientation of board
+  display.clearDisplay();                     // blank display
+  display.setFont(u8x8_font_profont29_2x3_r); // set font
+}
+
+
+/* --------------- Run this over and over ------------------- */
+void sendMoistureData() {
+  moistureValue = analogRead(MOISTURE);
+
+  const auto value = moistureValue;
+  const byte data[] = {0, 0, highByte(value), lowByte(value)};
+  Serial.write(data, 4);
+  Serial.println();
+}
+
+void checkMoisture(){
+  moistureValue = analogRead(MOISTURE);
+  if(moistureValue >= WET_THRESH) {
+    digitalWrite(MOSFET, HIGH);
+    display.setCursor(0,5);
+    display.print("A0: " + String(moistureValue));
+  }
+  else{
+    digitalWrite(MOSFET, LOW);
+    display.setCursor(0,5);
+    display.print("A0: " + String(moistureValue));
+  }
+}
+
+void loop(){
+  checkMoisture();
+  sendMoistureData();
+  delay(1000);
+
+  display.setCursor(0,5);
+  moistureValue = analogRead(MOISTURE);
+  display.setCursor(0,0);
+}
